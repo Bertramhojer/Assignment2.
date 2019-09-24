@@ -2,7 +2,9 @@
 title: "Assignment 2 - Language Development in ASD - Making predictions"
 author: "Bertram Hojer"
 date: "August 18, 2019"
-output: html_document
+output:
+  md_document:
+    variant: github_markdown
 editor_options: 
   chunk_output_type: console
 ---
@@ -196,7 +198,7 @@ for(i in 1:10){
   total_train <- filter(folds, .folds != i) # train-set from 9 folds
   total_test <- filter(folds, .folds == i) # test-set from 1 fold
   
-  model <- lmer(CHI_MLU ~ 1 + Diagnosis * (verbalIQ1 + nonVerbalIQ1) * (Visit + Visit2) + (1 + Visit + Visit2 | Child.ID), total_train, REML=FALSE) # running the same model each iteration with the new train-set
+  model <- lmer(CHI_MLU ~ 1 + Diagnosis * verbalIQ1 * (Visit +  Visit2) + (1 + Visit + Visit2 | Child.ID), total_train, REML=FALSE) # running the same model each iteration with the new train-set
   
   rmse_list <- c(rmse_list, rmse(total_test$CHI_MLU, predict(model, total_test, allow.new.levels = T))) # append the root-mean-squared-error to a list including all rmse-values.
 }
@@ -231,7 +233,9 @@ mean(rmse_list_basic)
 # Bonus Question 2: compare the cross-validated predictive error against the actual predictive error on the test data
 ```
 
-[HERE GOES YOUR ANSWER]
+Answer:
+The best model seems to get a mean RMSE-value of varying from 0.37 - 0.51. It is very dependent on the way the data is folded, and we can achieve a compeltely different RMSE-value by refolding the data. This seems to add an element of randomness to the model and the data which seems to be indicative of a rather large amount of error.
+
 
 ### Exercise 3) Assessing the single child
 
@@ -246,7 +250,36 @@ You want to evaluate:
 - how does the child fare compared to the model predictions at Visit 6? Is the child below or above expectations? (tip: use the predict() function on Bernie's data only and compare the prediction with the actual performance of the child)
 
 ```{r}
+bernie <- test_data %>% 
+  filter(Child.ID == 2)
+onlyTD <- train_data %>% 
+  filter(Diagnosis == "TD")
 
+# plotting Bernie as compared to TD-children
+ggplot()+
+  geom_point(data = onlyTD, aes(x = Visit, y = mean(CHI_MLU), group = Visit, color = "Blue", size = 10))+
+  geom_smooth(data = onlyTD, aes(x = Visit, y = CHI_MLU, color = "Blue"), method = lm, se = FALSE)+
+  geom_point(data = bernie, aes(x = Visit, y = CHI_MLU, group = Visit, color = "Red", size = 10))+
+  geom_smooth(data = bernie, aes(x = Visit, y = CHI_MLU, color = "Red"), method = lm, se = FALSE)+
+  theme_classic()+
+  labs(title = "Bernie compared to TD-children",
+       x = "Number of visit",
+       y = "Mean length of utterance")
+
+# calculating absolte difference from Bernie and TD kids
+onlyTD_DF <- onlyTD %>% 
+  group_by(Visit) %>% 
+  summarize(TD_kids = mean(CHI_MLU)) # calculating the mean MLU pr. visit for TD-kids
+
+onlyTD_DF$bernie_MLU <- bernie$CHI_MLU # appending the MLU of bernie pr. visit
+onlyTD_DF$difference <- abs(onlyTD_DF$TD_kids - onlyTD_DF$bernie_MLU) # calculating absolute difference
+view(onlyTD_DF)
+
+
+# predicting Bernie from our model
+predict(model3, bernie)
+# Calculating Root-mean-squared-error for the Bernie-prediction
+rmse(predict(model3, bernie), bernie$CHI_MLU)
 ```
 
 
